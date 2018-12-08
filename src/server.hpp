@@ -50,26 +50,39 @@ public:
     void run()
     {
         LOG(INFO, "start server");
-        // 待修改
-        // 现在的程序存在内存泄露问题
+        // MODIFY
         // 后面添加线程池和epoll
-        Handler * handler_;
         for(;;)
         {   
             struct sockaddr_in client_;
             socklen_t len_ = sizeof(client_);    
             int sock_ = accept(listen_sock_, (struct sockaddr *)&client_, &len_);
+
+            long sock_long = static_cast<long>(sock_);
+            void * sock_voidp = reinterpret_cast<void *>(sock_long);
+
             if(sock_ < 0)
             {
                 LOG(WARNING, "accept error");
                 continue;
             }
+
             //LOG(INFO, "accept success");
             pthread_t pid = 0;
             
-            handler_ = new Handler(sock_); 
-            pthread_create(&pid, NULL, Handler::run, NULL);
+            pthread_create(&pid, NULL, StartRoutine, sock_voidp);
         }
+    }
+    //MODIFY
+    static void * StartRoutine(void * arg)
+    {
+        long sock_long_ = reinterpret_cast<long>(arg);
+        int sock_ = static_cast<int>(sock_long_);
+
+        Handler * handler = new Handler(sock_);
+        handler->run();
+
+        delete handler;
     }
 
     ~HttpServer()

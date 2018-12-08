@@ -5,11 +5,14 @@
 class Replay
 {
 public:
+    void CgiReplay();
+    void NoCgiReplay();
+
     void MakeStatusLine();
     void MakeReplayHand();
     void MakeReplayBlank();
     void MakeReplayText();
-
+    
     const std::string & GetReplayLine();
     const std::string & GetReplayHead();
     const std::string & GetReplayBlank();
