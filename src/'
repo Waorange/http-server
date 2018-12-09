@@ -1,7 +1,0 @@
-#include "connect.hpp"
-
-void Content::ReadOneLine(std::string & str)
-{
-
-}
-

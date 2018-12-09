@@ -1,6 +1,7 @@
 #ifndef __REQUEST__HPP_
 #define __REQUEST__HPP_
 #include <string>
+#include <iostream>
 #include <unordered_map>
 
 class Request
@@ -18,17 +19,23 @@ public:
     {
         return param_;
     }
-    void GetResoursePath(std::string & path);
+    const std::string & GetReqParam()
+    {
+        return param_;
+    }
+
     void GetContentLength(int & size);
     void RequestLineParse();
-    void RequestUriParse();
+    void RequestUriParse(std::string & path);
     void RequestHeadParse();
     
     //暂时只接收get和pust方法
-    bool IsMathodLegal();
+    bool IsMathodLegal(bool & cgi);
 
     bool IsHaveText();
-
+    
+    //只处理200
+    void JudgeCode(int & code);
 private:
     std::string req_line_;
     std::string req_head_;
@@ -41,7 +48,7 @@ private:
     std::string uri_;    
     std::string version_;
 
-    std::unordered_map<std::string, std::string> head_argu;
+    std::unordered_map<std::string, std::string> head_argu_;
     std::string param_; //传递给cgi解析
 };
 

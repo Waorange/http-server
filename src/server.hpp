@@ -69,13 +69,14 @@ public:
 
             //LOG(INFO, "accept success");
             pthread_t pid = 0;
-            
+            LOG(INFO, "start handler ...");   
             pthread_create(&pid, NULL, StartRoutine, sock_voidp);
         }
     }
     //MODIFY
     static void * StartRoutine(void * arg)
     {
+        pthread_detach(pthread_self());
         long sock_long_ = reinterpret_cast<long>(arg);
         int sock_ = static_cast<int>(sock_long_);
 
@@ -83,11 +84,13 @@ public:
         handler->run();
 
         delete handler;
+        pthread_exit(0);
     }
 
     ~HttpServer()
     {
-
+        if(listen_sock_ > 0)
+            close(listen_sock_);
     }
 private:
     int port_;

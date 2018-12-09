@@ -34,7 +34,7 @@ std::string GetLogLevel(int level)
     }
 }
 
-void Log(int level, std::string message, std::string file, int line)
+void Log(int level, const std::string message, std::string file, int line)
 {
     printf("[%d:%s] [%s] (%s:%d)\n", GetTimeStamp(), GetLogLevel(level).c_str(), \
             message.c_str(), file.c_str(), line);
