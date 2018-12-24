@@ -155,7 +155,7 @@ public:
             return;
         }
         const std::string massage = res_.GetPath();
-        LOG(INFO, massage);
+        //LOG(INFO, massage);
 
         if(cont_.ReadRequestHead(req_.SetReqHead()))
         {
@@ -172,7 +172,7 @@ public:
         req_.JudgeCode(rep_.SetCode());
         ProcessReplay();
         cont_.SendReplay(cgi_, rep_, res_);
-        LOG(INFO, "handler finish");
+        // LOG(INFO, "handler finish");
     }
 private: 
     bool cgi_;

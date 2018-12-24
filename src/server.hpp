@@ -5,8 +5,10 @@
 #include <netinet/in.h>
 #include <pthread.h>
 
+
 #include "log.hpp"
 #include "handler.hpp"
+#include "thread_pool.hpp"
 
 class HttpServer
 {
@@ -14,6 +16,7 @@ public:
     HttpServer(int port)
         : port_(port)
         , listen_sock_(0)
+        , tp(NULL)
     {}
     void InitServer()
     {
@@ -44,6 +47,11 @@ public:
             LOG(FATAL, "listen socket error");
             exit(1);
         }
+
+        //初始化线程池
+        tp = new ThreadPool();
+        tp->InitThreadPool();
+
         LOG(INFO, "InitServer success");
     }
     
@@ -58,34 +66,30 @@ public:
             socklen_t len_ = sizeof(client_);    
             int sock_ = accept(listen_sock_, (struct sockaddr *)&client_, &len_);
 
-            long sock_long = static_cast<long>(sock_);
-            void * sock_voidp = reinterpret_cast<void *>(sock_long);
-
             if(sock_ < 0)
             {
                 LOG(WARNING, "accept error");
                 continue;
             }
-
-            //LOG(INFO, "accept success");
-            pthread_t pid = 0;
-            LOG(INFO, "start handler ...");   
-            pthread_create(&pid, NULL, StartRoutine, sock_voidp);
+            
+            LOG(INFO, "start handler ...");  
+            Task task_(sock_);
+            tp->TaskPush(task_);
         }
     }
-    //MODIFY
-    static void * StartRoutine(void * arg)
-    {
-        pthread_detach(pthread_self());
-        long sock_long_ = reinterpret_cast<long>(arg);
-        int sock_ = static_cast<int>(sock_long_);
+//  //MODIFY
+//  static void * StartRoutine(void * arg)
+//  {
+//      pthread_detach(pthread_self());
+//      long sock_long_ = reinterpret_cast<long>(arg);
+//      int sock_ = static_cast<int>(sock_long_);
 
-        Handler * handler = new Handler(sock_);
-        handler->run();
+//      Handler * handler = new Handler(sock_);
+//      handler->run();
 
-        delete handler;
-        pthread_exit(0);
-    }
+//      delete handler;
+//      pthread_exit(0);
+//  }
 
     ~HttpServer()
     {
@@ -95,6 +99,7 @@ public:
 private:
     int port_;
     int listen_sock_;
+    ThreadPool * tp;
 };
 
 #endif
