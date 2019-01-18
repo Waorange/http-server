@@ -41,6 +41,10 @@ public:
     {
         return rep_text_;
     }
+    const int GetCode()
+    {
+        return code_;
+    }
     
 private:
     std::string rep_line_;

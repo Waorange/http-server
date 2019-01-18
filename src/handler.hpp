@@ -125,54 +125,74 @@ public:
     }
     void ProcessError()
     {
-        //TODO
+        switch(rep_.GetCode())
+        {
+            case 400:
+                    break;
+            case 404:
+                    res_.SetPath() = "httproot/404.html";
+                    res_.IsPathLegal(cgi_);
+                    break;
+            case 500:
+                    break;
+            default: break;
+        }
+        rep_.MakeStatusLine();
+        rep_.MakeReplayHand(cgi_, res_);
+        rep_.MakeReplayBlank();
     }
     void run()
     {
         int code_ = 0;
-        cont_.ReadRequestLine(req_.SetReqLine());
-        req_.RequestLineParse();
-
-        //请求语法错误Bad Request
-        if(!req_.IsMathodLegal(cgi_))
+        try
         {
-            code_ = 400;
+            cont_.ReadRequestLine(req_.SetReqLine());
+            req_.RequestLineParse();
+
+            //请求语法错误Bad Request
+            if(!req_.IsMathodLegal(cgi_))
+            {
+                code_ = 400;
+                throw "error";
+            }
+
+            req_.RequestUriParse(res_.SetPath());
+
+            //找不到资源Not Found
+            if(!res_.IsPathLegal(cgi_))
+            {
+                code_ = 404;
+                cont_.ReadRequestHead(req_.SetReqHead());
+                throw "error";
+            }
+            const std::string massage = res_.GetPath();
+            LOG(INFO, massage);
+
+            if(!cont_.ReadRequestHead(req_.SetReqHead()))
+            {
+                code_ = 400;
+                throw "error";
+            }
+            req_.RequestHeadParse();
+
+            if(req_.IsHaveText())
+            {
+                req_.GetContentLength(cont_.SetContentLength());
+                cont_.ReadRequestText(req_.SetReqParam());
+            } 
+            req_.JudgeCode(rep_.SetCode());
+            ProcessReplay();
+
+            cont_.SendReplay(cgi_, rep_, res_);
+            LOG(INFO, "handler finish");
+        }
+        catch(...)
+        {
             rep_.SetCode() = code_;
             ProcessError();
-            return;
-            //TODO
+            cont_.SendReplay(cgi_, rep_, res_);
+            LOG(INFO, "Handler finish"); 
         }
-        
-        req_.RequestUriParse(res_.SetPath());
-
-        //找不到资源Not Found
-        if(!res_.IsPathLegal(cgi_))
-        {
-            code_ = 404;
-            rep_.SetCode() = code_;
-            cont_.ReadRequestHead(req_.SetReqHead());
-            ProcessError();
-            return;
-        }
-        const std::string massage = res_.GetPath();
-        //LOG(INFO, massage);
-
-        if(cont_.ReadRequestHead(req_.SetReqHead()))
-        {
-            code_ = 400;
-            //TODO
-        }
-        req_.RequestHeadParse();
-
-        if(req_.IsHaveText())
-        {
-            req_.GetContentLength(cont_.SetContentLength());
-            cont_.ReadRequestText(req_.SetReqParam());
-        } 
-        req_.JudgeCode(rep_.SetCode());
-        ProcessReplay();
-        cont_.SendReplay(cgi_, rep_, res_);
-        // LOG(INFO, "handler finish");
     }
 private: 
     bool cgi_;

@@ -23,6 +23,10 @@ public:
     {
         return param_;
     }
+    const std::string & GetReqHead()
+    {
+        return req_head_;
+    }
 
     void GetContentLength(int & size);
     void RequestLineParse();

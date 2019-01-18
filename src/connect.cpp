@@ -1,10 +1,11 @@
 #include "connect.hpp"
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <iostream>
 
 bool Connect::ReadOneLine(std::string & str)
 {
-    char ch_;
+    char ch_ = 0;
     while(ch_ != '\n')
     {
         ssize_t size_ = recv(sock_, &ch_, 1, 0);
@@ -21,7 +22,7 @@ bool Connect::ReadOneLine(std::string & str)
             }
             str += ch_;
         }
-        else
+        else 
         {
             return false;
         }
@@ -40,6 +41,7 @@ bool Connect::ReadRequestHead(std::string & head)
     std::string line_;
     while(line_ != "\n")
     {
+        line_.clear();
         if(!ReadOneLine(line_))
         {
             return false;
@@ -49,7 +51,6 @@ bool Connect::ReadRequestHead(std::string & head)
             break;
         }        
         head += line_;
-        line_.clear();
     }
     return true;
 }
@@ -71,7 +72,6 @@ bool Connect::ReadRequestText(std::string & param)
         }
         ++i;
     }
-
 }
 
 //发送

@@ -99,7 +99,7 @@ bool Request::IsHaveText()
 
 void Request::JudgeCode(int & code) 
 {
-    //添加其他
+    //根据报头添加其他
     code = 200; 
 }
 
