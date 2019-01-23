@@ -2,26 +2,11 @@
 #include <pthread.h>
 #include <queue>
 #include <unistd.h>
-
+#include "event_pool.hpp"
 #define THREAD_AMOUNT_MAX 5
 
 
-class Task
-{
-public:
-    Task(int sock = 0)
-        :sock_(sock)
-    {}
-    void run()
-    {
-        Handler * handler = new Handler(sock_);
-        handler->run();
-        delete handler;
-    }
-private:
-    int sock_;
-};
-
+//包含就绪队列
 class ThreadPool
 {
 public:
@@ -40,14 +25,14 @@ public:
             pthread_create(&tid_, NULL, start_rounte, this);
         }
     }
-    void TaskPush(Task & task)
+    void EventPush(Event * event)
     {
         LockQueue();
         if(hangup_amount_ > 0)
         {
             RouseOneThread();
         }
-        task_queue_.push(task);
+        ready_queue_.push(event);
         UnLockQueue();
     }
     ~ThreadPool()
@@ -55,11 +40,15 @@ public:
         pthread_mutex_destroy(&mutex_);
         pthread_cond_destroy(&cond_);
     }
-private:
-    void TaskPop(Task & task)
+    static void RemoveEventPool(EventPool * peventpool)
     {
-        task = task_queue_.front();
-        task_queue_.pop();
+        s_peventpool = peventpool;
+    }
+private:
+    void EventPop(Event & event)
+    {
+        event = *(ready_queue_.front());
+        ready_queue_.pop();
     }
     void RouseOneThread()
     {
@@ -73,9 +62,9 @@ private:
     {
         pthread_mutex_unlock(&mutex_);
     }
-    bool TaskIsEmpty()
+    bool EventIsEmpty()
     {
-        return task_queue_.empty();
+        return ready_queue_.empty();
     }
     static void * start_rounte(void * arg)
     {
@@ -84,14 +73,15 @@ private:
         for(;;)
         {
             tp->LockQueue();
-            while(tp->TaskIsEmpty())
+            while(tp->EventIsEmpty())
             {
                 tp->ThreadHangup();
             }
-            Task task_;
-            tp->TaskPop(task_);
+            Event event_;
+            tp->EventPop(event_);
             tp->UnLockQueue();
-            task_.run();    
+            s_peventpool->EventPop(event_.GetFd());
+            event_.run();    
         }
     }
 
@@ -103,15 +93,15 @@ private:
     }
 
 private:
-    std::queue<Task> task_queue_;
+    std::queue<Event *> ready_queue_;
     pthread_mutex_t mutex_;
     pthread_cond_t cond_;
     int thread_amount_;
     int hangup_amount_;
+    static EventPool * s_peventpool;
 };
 
-
-
+EventPool* ThreadPool::s_peventpool = NULL;
 
 
 

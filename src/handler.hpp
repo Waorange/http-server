@@ -1,5 +1,5 @@
-#ifndef __HANDLER_HPP__
-#define __HANDLER_HPP__
+#ifndef __HANDLER_H__
+#define __HANDLER_H__
 
 #include <unistd.h>
 #include <string>
@@ -11,9 +11,9 @@
 #include "log.hpp"
 
 #include "resourse.hpp"
-#include "request.hpp"
-#include "replay.hpp"
-#include "connect.hpp"
+#include "code.h"
+#include "connect.h"
+
 
 class Handler
 {
@@ -22,6 +22,7 @@ public:
         :cont_(sock)
         ,cgi_(false)
     {}
+    //处理cgi请求
     bool HandlerCgi()
     {
         const std::string & param_ = req_.GetReqParam();
@@ -79,18 +80,15 @@ public:
                         throw "error";
                     }
                 }
-
-                //当写端关闭管道为空时read返回0
-                char ch_;
-                while(read(fd_output[0], &ch_, 1) > 0)
-                {
-                    rep_.MakeReplayText().push_back(ch_);
-                }
-
-                waitpid(pid, NULL, 0);
                 close(fd_input[1]);
-                close(fd_output[0]);
-                return true;
+                pid_ = pid;
+
+                s_pepoll->EventAdd(fd_output[0]);
+
+                //添加到事件池;
+                Event event(fd_output[0], &EncodeAndsend, const_cast<Handler*>(this));
+
+                s_peventpool->EventPush(fd_output[0], event);
             }
         }
         catch(...) 
@@ -109,40 +107,52 @@ public:
             return false;
         }
     }
-    void ProcessReplay()
+
+
+    //处理cgi程序返回的结果
+    void ProcessCgiFollow(int fd)
     {
-        if(cgi_)
+        char ch_;
+        while(read(fd, &ch_, 1) > 0)
         {
-            if(!HandlerCgi())
-            {
-                ProcessError();
-                return;
-            }
+            rep_.MakeReplayText().push_back(ch_);
         }
-        rep_.MakeStatusLine();
-        rep_.MakeReplayHand(cgi_, res_);
-        rep_.MakeReplayBlank();
+        waitpid(pid_, NULL, 0);
+        close(fd);
+        
+        ProcessReplay();
     }
-    void ProcessError()
+
+
+    //通过code构建回复报文并回复
+    void ProcessReplay()
     {
         switch(rep_.GetCode())
         {
             case 400:
-                    break;
+                break;
             case 404:
-                    res_.SetPath() = "httproot/404.html";
-                    res_.IsPathLegal(cgi_);
-                    break;
+                res_.SetPath() = "httproot/404.html";
+                res_.IsPathLegal(cgi_);
+                break;
             case 500:
-                    break;
+                break;
             default: break;
         }
         rep_.MakeStatusLine();
         rep_.MakeReplayHand(cgi_, res_);
         rep_.MakeReplayBlank();
+
+        cont_.SendReplay(cgi_, rep_, res_);
     }
-    void run()
+
+
+    //对于非cgi直接处理并且发送
+    //对于cgi，启动cgi并发送参数，然后添加到s_pepoll中，等待cgi程序处理完结果返回到程序
+    //重新加入任务队列处理
+    void ReadAndParse()
     {
+        LOG(INFO, "start handler ...");  
         int code_ = 0;
         try
         {
@@ -181,26 +191,58 @@ public:
                 cont_.ReadRequestText(req_.SetReqParam());
             } 
             req_.JudgeCode(rep_.SetCode());
-            ProcessReplay();
 
-            cont_.SendReplay(cgi_, rep_, res_);
-            LOG(INFO, "handler finish");
+            if(cgi_)
+                HandlerCgi();
+            else
+            {
+                ProcessReplay();
+                LOG(INFO, "Request handler finish");
+            }  
         }
         catch(...)
         {
             rep_.SetCode() = code_;
-            ProcessError();
-            cont_.SendReplay(cgi_, rep_, res_);
-            LOG(INFO, "Handler finish"); 
+
+            ProcessReplay();
+            LOG(INFO, "Error Handler finish"); 
         }
     }
+
+
+    //用于事件回调
+    static void ReadAndDecode(Handler * handler, int fd)
+    {
+        handler = new Handler(fd);
+        handler->ReadAndParse();
+    }
+    static void EncodeAndsend(Handler * handler, int fd)
+    {
+        handler->ProcessCgiFollow(fd);
+        delete handler;
+    }
+    static void RemoveEpoll(Epoll * ep)
+    {
+        s_pepoll = ep;
+    }
+    static void RemoveEventPool(EventPool * evp)
+    {
+        s_peventpool = evp;
+    }
+
 private: 
     bool cgi_;
     Resourse res_;
     Request req_;
     Replay rep_;
     Connect cont_;
+    pid_t pid_;
+    static Epoll * s_pepoll;
+    static EventPool * s_peventpool;
 };
+Epoll* Handler::s_pepoll = NULL;
+EventPool* Handler::s_peventpool = NULL;
 
 
 #endif
+

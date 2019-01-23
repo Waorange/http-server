@@ -1,10 +1,10 @@
-#ifndef __CONNECTION_HPP__
-#define __CONNECTION_HPP__
+#ifndef __CONNECTION_H__
+#define __CONNECTION_H__
 #include <string>
 #include <fcntl.h>
 #include <sys/sendfile.h>
 #include <sys/types.h>
-#include "replay.hpp"
+#include "code.h"
 
 //负责数据的读取和发送
 class Connect
