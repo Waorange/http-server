@@ -35,6 +35,8 @@ void Request::RequestLineParse()
     std::stringstream str(req_line_);
     //请求行中用空格进行分隔
     str >> mathod_ >> uri_ >> version_;
+
+    std::cout << req_line_ << std::endl;
 }
 void Request::RequestUriParse(std::string & path)
 {

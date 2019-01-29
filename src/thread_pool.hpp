@@ -5,6 +5,7 @@
 #include "event_pool.hpp"
 #define THREAD_AMOUNT_MAX 5
 
+class Singleton;
 
 //包含就绪队列
 class ThreadPool
@@ -40,10 +41,10 @@ public:
         pthread_mutex_destroy(&mutex_);
         pthread_cond_destroy(&cond_);
     }
-    static void RemoveEventPool(EventPool * peventpool)
-    {
-        s_peventpool = peventpool;
-    }
+//  static void RemoveEventPool(EventPool * peventpool)
+//  {
+//      s_peventpool = peventpool;
+//  }
 private:
     void EventPop(Event & event)
     {
@@ -80,7 +81,7 @@ private:
             Event event_;
             tp->EventPop(event_);
             tp->UnLockQueue();
-            s_peventpool->EventPop(event_.GetFd());
+            Singleton::GetEventPool()->EventPop(event_.GetFd());
             event_.run();    
         }
     }
@@ -98,10 +99,10 @@ private:
     pthread_cond_t cond_;
     int thread_amount_;
     int hangup_amount_;
-    static EventPool * s_peventpool;
+//    static EventPool * s_peventpool;
 };
 
-EventPool* ThreadPool::s_peventpool = NULL;
+//   EventPool* ThreadPool::s_peventpool = NULL;
 
 
 

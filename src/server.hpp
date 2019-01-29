@@ -53,7 +53,7 @@ public:
             exit(1);
         }
 
-        if(!epoll_.EventAdd(listen_sock_, false))
+        if(!Singleton::GetEpoll()->EventAdd(listen_sock_, false))
         {
             LOG(FATAL, "listen socket error");
             exit(1);
@@ -63,10 +63,10 @@ public:
         tp = new ThreadPool();
         tp->InitThreadPool();
 
-        Handler::RemoveEpoll(&epoll_);
-        Handler::RemoveEventPool(&eventpool_);
+//      Handler::RemoveEpoll(&epoll_);
+//      Handler::RemoveEventPool(&eventpool_);
 
-        ThreadPool::RemoveEventPool(&eventpool_);
+//      ThreadPool::RemoveEventPool(&eventpool_);
 
         LOG(INFO, "InitServer success");
     }
@@ -77,7 +77,7 @@ public:
         for(;;)
         {
             std::vector<int> revents;
-            if(!epoll_.EpollWait(revents))
+            if(!Singleton::GetEpoll()->EpollWait(revents))
             {
                 LOG(WARNING, "accept error");
                 continue;
@@ -96,16 +96,17 @@ public:
                         continue;
                     }
                     //添加到epoll_监听
-                    epoll_.EventAdd(sock_);
+                    Singleton::GetEpoll()->EventAdd(sock_);
 
                     //添加到事件池
                     Event event(sock_, &Handler::ReadAndDecode);
-                    eventpool_.EventPush(sock_, event);
+                    Singleton::GetEventPool()->EventPush(sock_, event);
                 }
                 else
                 {   
                     //表示客户端可以读或者cgi程序返回结果, 添加到线程池就绪队列中
-                    tp->EventPush(eventpool_.GetPEvent(fd));
+                    Singleton::GetEpoll()->EventDel(fd);
+                    tp->EventPush(Singleton::GetEventPool()->GetPEvent(fd));
                 }
             }   
         }
@@ -150,9 +151,9 @@ public:
         if(listen_sock_ > 0)
             close(listen_sock_);
     }
-public:
-    Epoll epoll_;
-    EventPool eventpool_;
+  //public:
+//  Epoll epoll_;
+//  EventPool eventpool_;
 private:
     int port_;
     int listen_sock_;

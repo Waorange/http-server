@@ -52,6 +52,7 @@ bool Connect::ReadRequestHead(std::string & head)
         }        
         head += line_;
     }
+//    std::cout << head << std::endl;
     return true;
 }
 bool Connect::ReadRequestText(std::string & param)
@@ -72,6 +73,9 @@ bool Connect::ReadRequestText(std::string & param)
         }
         ++i;
     }
+//  std::cout << "正文：" << std::endl;
+//  std::cout << param << std::endl;
+    return true;
 }
 
 //发送
@@ -93,7 +97,7 @@ void Connect::SendReplay(bool cgi, Replay & rep, Resourse & res)
     {   
         const std::string & path_ = res.GetPath();
         int fd = open(path_.c_str(), O_RDONLY);
-        sendfile(sock_, fd, NULL, res.GetResSize());
+        sendfile(sock_, fd, NULL, res.GetResSize());        
         close(fd); 
     }
 }

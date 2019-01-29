@@ -14,6 +14,7 @@
 #include "code.h"
 #include "connect.h"
 
+class Singleton;
 
 class Handler
 {
@@ -59,8 +60,19 @@ public:
                 cl_env_ += Replay::IntToString(param_.size());    
                 putenv((char *)cl_env_.c_str());
 
-                const std::string path_ = res_.GetPath();
-                execl(path_.c_str(), path_.c_str(), NULL);
+                //const std::string path_ = res_.GetPath();
+
+                std::string path_ = res_.GetPath();
+                std::string suffix_ = path_.substr(path_.rfind('.') + 1);
+                //std::cout << path_ << " "<<suffix_<< std::endl;
+                if(suffix_ == "py")
+                {
+                    execlp("python3", "python3", path_.c_str(), NULL); 
+                }
+                else
+                {
+                    execl(path_.c_str(), path_.c_str(), NULL);
+                }
 
                 LOG(WARNING, "execl error");
                 exit(1);  
@@ -83,12 +95,12 @@ public:
                 close(fd_input[1]);
                 pid_ = pid;
 
-                s_pepoll->EventAdd(fd_output[0]);
+                Singleton::GetEpoll()->EventAdd(fd_output[0]);
 
                 //添加到事件池;
                 Event event(fd_output[0], &EncodeAndsend, const_cast<Handler*>(this));
 
-                s_peventpool->EventPush(fd_output[0], event);
+                Singleton::GetEventPool()->EventPush(fd_output[0], event);
             }
         }
         catch(...) 
@@ -117,10 +129,13 @@ public:
         {
             rep_.MakeReplayText().push_back(ch_);
         }
-        waitpid(pid_, NULL, 0);
+
         close(fd);
+        waitpid(pid_, NULL, 0);
         
         ProcessReplay();
+
+        LOG(INFO, "Request handler finish");
     }
 
 
@@ -150,7 +165,7 @@ public:
     //对于非cgi直接处理并且发送
     //对于cgi，启动cgi并发送参数，然后添加到s_pepoll中，等待cgi程序处理完结果返回到程序
     //重新加入任务队列处理
-    void ReadAndParse()
+    bool ReadAndParse()
     {
         LOG(INFO, "start handler ...");  
         int code_ = 0;
@@ -175,6 +190,7 @@ public:
                 cont_.ReadRequestHead(req_.SetReqHead());
                 throw "error";
             }
+            
             const std::string massage = res_.GetPath();
             LOG(INFO, massage);
 
@@ -192,12 +208,15 @@ public:
             } 
             req_.JudgeCode(rep_.SetCode());
 
-            if(cgi_)
+            if(cgi_){
                 HandlerCgi();
+                return false;
+            }
             else
             {
                 ProcessReplay();
                 LOG(INFO, "Request handler finish");
+                return true;
             }  
         }
         catch(...)
@@ -206,6 +225,7 @@ public:
 
             ProcessReplay();
             LOG(INFO, "Error Handler finish"); 
+            return true;
         }
     }
 
@@ -214,21 +234,25 @@ public:
     static void ReadAndDecode(Handler * handler, int fd)
     {
         handler = new Handler(fd);
-        handler->ReadAndParse();
+        if(handler->ReadAndParse())
+            delete handler;
+        
+        
     }
     static void EncodeAndsend(Handler * handler, int fd)
     {
         handler->ProcessCgiFollow(fd);
         delete handler;
     }
-    static void RemoveEpoll(Epoll * ep)
-    {
-        s_pepoll = ep;
-    }
-    static void RemoveEventPool(EventPool * evp)
-    {
-        s_peventpool = evp;
-    }
+//  static void RemoveEpoll(Epoll * ep)
+//  {
+//      s_pepoll = ep;
+//  }
+//  static void RemoveEventPool(EventPool * evp)
+//  {
+//      s_peventpool = evp;
+//  }
+    
 
 private: 
     bool cgi_;
@@ -237,11 +261,11 @@ private:
     Replay rep_;
     Connect cont_;
     pid_t pid_;
-    static Epoll * s_pepoll;
-    static EventPool * s_peventpool;
+//  static Epoll * s_pepoll;
+//  static EventPool * s_peventpool;
 };
-Epoll* Handler::s_pepoll = NULL;
-EventPool* Handler::s_peventpool = NULL;
+//  Epoll* Handler::s_pepoll = NULL;
+//  EventPool* Handler::s_peventpool = NULL;
 
 
 #endif

@@ -28,8 +28,9 @@ public:
     void SendReplay(bool cgi, Replay & rep, Resourse & res);
     ~Connect()
     {
-        if(sock_ > 0)
+        if(sock_ > 0){
             close(sock_);
+        }
     }
 private:
     //从缓存区读一行，另外将所有的换行转换为\n

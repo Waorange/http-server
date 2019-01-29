@@ -86,6 +86,7 @@ private:
 class Epoll
 {
 public:
+
     Epoll()
     {
         epoll_fd = epoll_create(10);
@@ -143,5 +144,29 @@ private:
     int epoll_fd;
     struct epoll_event * revents;
 };
+
+//使用饿汉单例模式启动epoll和eventpool
+class Singleton
+{
+public:
+    static Epoll * GetEpoll()
+    {
+        return epoll;
+    }
+    static EventPool * GetEventPool()
+    {
+        return eventpool;
+    }
+private:
+    Singleton() = delete;
+    Singleton(Singleton const &) = delete;
+    Singleton & operator=(Singleton const&) = delete;
+private:
+    static EventPool * eventpool;
+    static Epoll * epoll;
+};
+
+EventPool * Singleton::eventpool = new EventPool;
+Epoll * Singleton::epoll = new Epoll;
 
 #endif
